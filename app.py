@@ -1,60 +1,61 @@
 import streamlit as st
-from langdetect import detect
 from collections import OrderedDict
-from googletrans import Translator
 import io
 
-st.set_page_config(page_title="Free Auto Translator", page_icon="📚")
+st.set_page_config(page_title="Vocabulary Organizer", page_icon="📚")
 
-st.title("Free Auto Translation Vocabulary Organizer")
+st.title("Vocabulary Cleaner & Organizer")
 
-translator = Translator()
+st.write("""
+Paste your raw text. The app will:
+- Remove duplicates
+- Show unique lines
+- Let you add optional language tags or notes
+- Export clean vocabulary file
+""")
 
-def detect_language(text):
-    try:
-        lang = detect(text)
-        if lang in ["de", "en", "pt"]:
-            return lang
-        else:
-            return "other"
-    except:
-        return "unknown"
+text_input = st.text_area("Raw text here:", height=300)
 
-text_input = st.text_area("Paste text here:", height=300)
-
-target_lang = st.selectbox(
-    "Translate all lines to:",
-    ["en (English)", "pt (Portuguese)", "de (German)"]
-)
-
-if st.button("Process Text"):
+if st.button("Process"):
     if text_input.strip() == "":
-        st.warning("Please paste some text!")
+        st.warning("Please paste some text.")
     else:
         lines = [line.strip() for line in text_input.split("\n") if line.strip()]
         unique_lines = list(OrderedDict.fromkeys(lines))
 
-        st.success(f"{len(unique_lines)} unique lines found.")
+        st.success(f"{len(unique_lines)} unique lines.")
 
-        results = []
+        organized = []
 
-        for line in unique_lines:
-            detected = detect_language(line)
+        st.markdown("## Add optional language/notes")
 
-            try:
-                translated = translator.translate(line, dest=target_lang.split()[0])
-                translation_text = translated.text
-            except Exception as e:
-                translation_text = f"[error] {str(e)}"
+        for i, line in enumerate(unique_lines):
+            col1, col2, col3 = st.columns([3,1,2])
 
-            st.write(f"**{line}** ({detected}) → {translation_text}")
+            with col1:
+                st.write(f"**{line}**")
 
-            results.append((line, translation_text))
+            with col2:
+                lang = st.selectbox(
+                    "Language",
+                    ["", "DE", "EN", "PT"],
+                    key=f"lang_{i}"
+                )
 
-        # EXPORT FILE
+            with col3:
+                note = st.text_input(f"Notes (optional)", key=f"note_{i}")
+
+            organized.append((line, lang, note))
+
+        # Export
         output = io.StringIO()
-        for original, translation in results:
-            output.write(f"{original} — {translation}\n")
+        for original, lang, note in organized:
+            line_out = original
+            if lang:
+                line_out += f" | {lang}"
+            if note:
+                line_out += f" | {note}"
+            output.write(line_out + "\n")
 
         st.download_button(
             label="Download TXT file",
